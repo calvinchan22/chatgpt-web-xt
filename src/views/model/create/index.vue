@@ -77,7 +77,7 @@ const customRequest = ({
   onError,
 }: UploadCustomRequestOptions) => {
   const formData = new FormData()
-  formData.append(file.name, file.file as File)
+  formData.append('file', file.file as File)
   fileList.value[0].status = 'uploading'
   fileList.value[0].percentage = 100
   prepareData<{ fileId: string; preparedData: string }>(formData)
@@ -211,6 +211,7 @@ const cancel = () => {
 .model-create {
   display: flex;
   flex-direction: column;
+  background-color: #fbfbfb;
 
   &__header {
     height: 48px;
@@ -218,6 +219,7 @@ const cancel = () => {
     box-shadow: inset 0 -1px #e1e5eb;
     padding: 0 16px;
     line-height: 48px;
+    background-color: #fff;
   }
 
   &__content {
@@ -229,6 +231,10 @@ const cancel = () => {
     &-main {
       width: 50%;
       height: 500px;
+      padding: 24px;
+      border: 1px solid #e1e5eb;
+      border-radius: 6px;
+      background-color: #fff;
     }
   }
   &__footer {
@@ -237,6 +243,7 @@ const cancel = () => {
       align-items: center;
       justify-content: center;
       box-shadow: inset 0 1px #e1e5eb;
+      background-color: #fff;
   }
 }
 </style>
