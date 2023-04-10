@@ -104,6 +104,7 @@ const columns = [
         NButton,
         {
           size: 'small',
+          quaternary: true,
           type: 'info',
           onClick: () => seeDetail(row),
         },
@@ -133,7 +134,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="model-list h-full w-full p-4">
+  <div class="model-list h-full w-full">
     <div class="model-list__header">
       <div>
         <NButton @click="goBack">
@@ -165,13 +166,14 @@ onMounted(async () => {
 .model-list {
     display: flex;
     flex-direction: column;
+    background-color: #fbfbfb;
     &__header {
-        height: 48px;
         box-shadow: inset 0 -1px #e1e5eb;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 24px;
+        padding: 20px 24px 16px 40px;
+        background-color: #fff;
     }
 
     &__content {

@@ -314,17 +314,17 @@ async function createModel(req: any) {
       method: 'POST',
       body: req.body,
     })
-    const modelDetailData = await response.json()
+    const creteModelData = await response.json()
     return sendResponse({
       type: 'Success',
-      data: (modelDetailData as any)?.data || [],
+      data: creteModelData || {},
     })
   }
   catch {
     return sendResponse({
       type: 'Fail',
       message: '获取失败',
-      data: [],
+      data: {},
     })
   }
 }
