@@ -300,7 +300,32 @@ async function getModelDetail(req: any) {
   }
 }
 
-async function createModel(req: any) {
+interface CreateModelRes {
+  message: string
+  data: {}
+  status: 'Success' | 'Fail'
+}
+
+function createModel(req: any) {
+  return new Promise<CreateModelRes>((resolve, reject) => {
+    exec(`openai api fine_tunes.create \
+    -t ${req.body.training_file} \
+    -m ${req.body.model} \
+    --suffix ${req.body.suffix} \
+    --n_epochs ${req.body.n_epochs} \
+    --batch_size ${req.body.batch_size} \
+    --learning_rate_multiplier ${req.body.learning_rate_multiplier} \
+    --compute_classification_metrics ${req.body.compute_classification_metrics}`, (_err) => {
+      if (_err)
+        return reject(new Error('创建失败！'))
+
+      return resolve({ message: '创建成功', data: {}, status: 'Success' })
+    })
+  })
+}
+
+async function cancelModel(req: any) {
+  const { id } = req.body as { id: string }
   const OPENAI_API_KEY = process.env.OPENAI_API_KEY
   const OPENAI_API_BASE_URL = process.env.OPENAI_API_BASE_URL
 
@@ -313,21 +338,47 @@ async function createModel(req: any) {
 
   try {
     const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_API_KEY}` }
-    const response = await fetch(`${API_BASE_URL}/v1/fine-tunes`, {
-      headers,
-      method: 'POST',
-      body: req.body,
-    })
-    const creteModelData = await response.json()
+    const response = await fetch(`${API_BASE_URL}/v1/fine-tunes/${id}/cancel`, { headers, method: 'POST' })
+    const cancelModelResponseData = await response.json()
     return sendResponse({
       type: 'Success',
-      data: creteModelData || {},
+      data: cancelModelResponseData || {},
     })
   }
   catch {
     return sendResponse({
       type: 'Fail',
-      message: '获取失败',
+      message: '取消失败',
+      data: {},
+    })
+  }
+}
+
+async function deleteModel(req: any) {
+  const { fine_tuned_model } = req.body as { fine_tuned_model: string }
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY
+  const OPENAI_API_BASE_URL = process.env.OPENAI_API_BASE_URL
+
+  if (!isNotEmptyString(OPENAI_API_KEY))
+    return Promise.resolve('-')
+
+  const API_BASE_URL = isNotEmptyString(OPENAI_API_BASE_URL)
+    ? OPENAI_API_BASE_URL
+    : 'https://api.openai.com'
+
+  try {
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_API_KEY}` }
+    const response = await fetch(`${API_BASE_URL}/v1/models/${fine_tuned_model}`, { headers, method: 'DELETE' })
+    const deleteModelResponseData = await response.json()
+    return sendResponse({
+      type: 'Success',
+      data: deleteModelResponseData || {},
+    })
+  }
+  catch {
+    return sendResponse({
+      type: 'Fail',
+      message: '取消失败',
       data: {},
     })
   }
@@ -424,4 +475,15 @@ function prepareData(file: any) {
 
 export type { ChatContext, ChatMessage }
 
-export { chatReplyProcess, chatConfig, currentModel, getModels, getList, getModelDetail, prepareData, createModel }
+export {
+  chatReplyProcess,
+  chatConfig,
+  currentModel,
+  getModels,
+  getList,
+  getModelDetail,
+  prepareData,
+  createModel,
+  cancelModel,
+  deleteModel,
+}

@@ -2,7 +2,18 @@ import express from 'express'
 import multer from 'multer'
 import type { RequestProps } from './types'
 import type { ChatMessage } from './chatgpt'
-import { chatConfig, chatReplyProcess, createModel, currentModel, getList, getModelDetail, getModels, prepareData } from './chatgpt'
+import {
+  cancelModel,
+  chatConfig,
+  chatReplyProcess,
+  createModel,
+  currentModel,
+  deleteModel,
+  getList,
+  getModelDetail,
+  getModels,
+  prepareData,
+} from './chatgpt'
 import { auth } from './middleware/auth'
 import { limiter } from './middleware/limiter'
 import { isNotEmptyString } from './utils/is'
@@ -84,6 +95,26 @@ router.post('/create-model', auth, async (req, res) => {
     res.send(response)
   }
   catch (error) {
+    res.send({ status: 'Fail', message: error.message, data: null })
+  }
+})
+
+router.post('/cancel-model', auth, async (req, res) => {
+  try {
+    const response = await cancelModel(req)
+    res.send(response)
+  }
+  catch (error) {
+    res.send(error)
+  }
+})
+
+router.post('/delete-model', auth, async (req, res) => {
+  try {
+    const response = await deleteModel(req)
+    res.send(response)
+  }
+  catch (error) {
     res.send(error)
   }
 })
@@ -125,7 +156,7 @@ router.post('/verify', async (req, res) => {
   }
 })
 
-router.post('/prepareData', upload.single('file'), async (req, res) => {
+router.post('/prepare-data', upload.single('file'), async (req, res) => {
   try {
     const response = await prepareData((req as any).file)
     res.send(response)

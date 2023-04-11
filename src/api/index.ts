@@ -1,5 +1,5 @@
 import type { AxiosProgressEvent, GenericAbortSignal } from 'axios'
-import type { CreateModelReq } from './types'
+import type { CancelModelReq, CreateModelReq, DeleteModelReq } from './types'
 import { get, post } from '@/utils/request'
 import { useSettingStore } from '@/store'
 
@@ -91,6 +91,20 @@ export function prepareData<T>(formData: FormData) {
 export function createModel<T>(params: CreateModelReq) {
   return post<T>({
     url: '/api/create-model',
+    data: params,
+  })
+}
+
+export function cancelModel<T>(params: CancelModelReq) {
+  return post<T>({
+    url: '/api/cancel-model',
+    data: params,
+  })
+}
+
+export function deleteModel<T>(params: DeleteModelReq) {
+  return post<T>({
+    url: '/api/delete-model',
     data: params,
   })
 }

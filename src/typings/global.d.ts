@@ -4,3 +4,4 @@ interface Window {
   $message?: import('naive-ui').MessageProviderInst;
   $notification?: import('naive-ui').NotificationProviderInst;
 }
+declare module 'vue3-json-viewer'
