@@ -14,6 +14,7 @@ import {
 } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import { createModel as createModelApi, prepareData } from '@/api/index'
+import { MB } from '@/consts/index'
 
 const router = useRouter()
 const message = useMessage()
@@ -97,6 +98,15 @@ const customRequest = ({
       onError()
     })
 }
+const beforeUpload = (options: { file: UploadFileInfo; fileList: UploadFileInfo[] }) => {
+  const { file } = options
+  const FILE_MAX_SIZE = MB * 100
+
+  if ((file.file?.size || 0) > FILE_MAX_SIZE) {
+    message.warning('文件大小不超过100MB')
+    return false
+  }
+}
 
 const showPreparedDataModal = ref(false)
 const viewData = () => {
@@ -167,6 +177,8 @@ const cancel = () => {
             <NUpload
               v-model:file-list="fileList"
               :custom-request="customRequest"
+              :max="1"
+              :on-before-upload="beforeUpload"
               accept=".csv, .tsv, .xlsx, .json, .jsonl"
             >
               <NButton>上传文件</NButton>
