@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import { h, onMounted, ref } from 'vue'
-import { NButton, NDataTable, NModal } from 'naive-ui'
+import { NButton, NDataTable, NModal, NSpace, useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import ModelDetailTable from '../components/ModelDetailTable.vue'
 import { ROUTER } from '@/router/const'
-import { fetchList } from '@/api'
-import type { HyperParam, TrainingFile } from '@/api/types'
+import { cancelModel as cancelModelApi, deleteModel as deleteModelApi, fetchList } from '@/api'
+import type { CancelModelRes, DeleteModelRes, HyperParam, TrainingFile } from '@/api/types'
 
 interface ListItem {
   created_at: number
@@ -33,6 +33,7 @@ interface TableListItem {
 }
 
 const router = useRouter()
+const message = useMessage()
 
 const goBack = () => {
   router.push({
@@ -51,6 +52,47 @@ const showModal = ref(false)
 const seeDetail = (detail: TableListItem) => {
   detailModelId.value = detail.id
   showModal.value = true
+}
+
+const list = ref<TableListItem[]>([])
+const isTableLoading = ref(false)
+
+const loadModelList = async () => {
+  isTableLoading.value = true
+  const { data } = await fetchList<ListItem[]>()
+  isTableLoading.value = false
+  list.value = data.map((item) => {
+    return {
+      id: item.id || '',
+      fine_tuned_model: item.fine_tuned_model || '',
+      model: item.model || '',
+      created_at: dayjs.unix(item.created_at || 0).format('YYYY-MM-DD HH:mm:ss'),
+      status: item.status || '',
+      super_param: JSON.stringify(item.hyperparams),
+    }
+  }) as TableListItem[]
+}
+
+const deleteModel = async (detail: TableListItem) => {
+  const { fine_tuned_model } = detail
+  const { data, status } = await deleteModelApi<DeleteModelRes>({ fine_tuned_model })
+
+  if (status === 'Fail' || data.error)
+    return message.error(data.error?.message || '删除失败')
+
+  message.success('删除成功')
+  loadModelList()
+}
+
+const calcelModel = async (detail: TableListItem) => {
+  const { id } = detail
+  const { status, data } = await cancelModelApi<CancelModelRes>({ id })
+
+  if (status === 'Fail' || data.error)
+    return message.error(data.error?.message || '取消失败')
+
+  message.success('取消成功')
+  loadModelList()
 }
 
 const columns = [
@@ -101,35 +143,43 @@ const columns = [
     key: 'actions',
     render(row: TableListItem) {
       return h(
-        NButton,
-        {
-          size: 'small',
-          quaternary: true,
-          type: 'info',
-          onClick: () => seeDetail(row),
-        },
-        { default: () => '查看详情' },
+        'div',
+        {},
+        [h(
+          NButton,
+          {
+            size: 'small',
+            quaternary: true,
+            type: 'info',
+            onClick: () => calcelModel(row),
+          },
+          { default: () => '取消' },
+        ), h(
+          NButton,
+          {
+            size: 'small',
+            quaternary: true,
+            type: 'info',
+            onClick: () => deleteModel(row),
+          },
+          { default: () => '删除' },
+        ), h(
+          NButton,
+          {
+            size: 'small',
+            quaternary: true,
+            type: 'info',
+            onClick: () => seeDetail(row),
+          },
+          { default: () => '查看详情' },
+        )],
       )
     },
   },
 ]
-const list = ref<TableListItem[]>([])
 
-onMounted(async () => {
-  const { data } = await fetchList<ListItem[]>()
-
-  list.value = data.map((item) => {
-    return {
-      id: item.id || '',
-      fine_tuned_model: item.fine_tuned_model || '',
-      model: item.model || '',
-      created_at: dayjs.unix(item.created_at || 0).format('YYYY-MM-DD HH:mm:ss'),
-      status: item.status || '',
-      super_param: JSON.stringify(item.hyperparams),
-    }
-  }) as TableListItem[]
-
-  window.console.log(data)
+onMounted(() => {
+  loadModelList()
 })
 </script>
 
@@ -146,7 +196,19 @@ onMounted(async () => {
       </NButton>
     </div>
     <div class="model-list__content">
-      <NDataTable :columns="columns" :data="list" :style="{ height: `calc(100% - 12px)` }" flex-height :bordered="false" />
+      <NSpace class="model-list__content-toolbar">
+        <NButton type="primary" @click="loadModelList">
+          刷新
+        </NButton>
+      </NSpace>
+      <NDataTable
+        :columns="columns"
+        :data="list"
+        :style="{ height: `calc(100% - 40px)` }"
+        flex-height
+        :bordered="false"
+        :loading="isTableLoading"
+      />
     </div>
     <NModal
       v-model:show="showModal"
@@ -179,6 +241,11 @@ onMounted(async () => {
     &__content {
         flex: 1;
         padding: 38px 100px 12px;
+
+        &-toolbar {
+          box-shadow: inset 0 -1px #e1e5eb;
+          padding-bottom: 8px;
+        }
     }
 
 }
