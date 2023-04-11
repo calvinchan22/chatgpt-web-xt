@@ -1,4 +1,4 @@
-import { createReadStream, existsSync, readdirSync } from 'fs'
+import { createReadStream, existsSync, readdirSync, rmSync } from 'fs'
 import { exec } from 'child_process'
 import Readline from 'readline'
 import * as dotenv from 'dotenv'
@@ -374,23 +374,31 @@ interface PrepareDataRes {
   status: 'Success' | 'Fail'
 }
 
+function findFile(folder: string, filename: string) {
+  // 查找解析后的文件
+  const files = readdirSync(folder).filter(item => item !== filename)
+  // 先找文件名存在train的，如果不存在，则找prepared，实在不对劲最后再找非源文件的
+  let preparedFilename = files.find(item => item.includes('train'))
+  !preparedFilename && (preparedFilename = files.find(item => item.includes('prepared')))
+  !preparedFilename && (preparedFilename = files[0])
+  return preparedFilename
+}
+
 function prepareData(file: any) {
+  const { filename, folder } = handlerFullPath(file.path)
   return new Promise<PrepareDataRes>((resolve, reject) => {
     if (existsSync(file.path)) {
-      const { filename, folder } = handlerFullPath(file.path)
       exec(`cd ${folder} &&  openai tools fine_tunes.prepare_data -f ${filename} -q`, (_err) => {
         if (_err) {
           reject(new Error('微调接口调用失败失败'))
           return
         }
-        // 查找解析后的文件
-        const files = readdirSync(folder)
-        const preparedFilename = files.find(item => item !== filename)
-        if (!preparedFilename) {
+        const parsedFilename = findFile(folder, filename)
+        if (!parsedFilename) {
           resolve({ message: '文件解析失败', data: '', status: 'Success' })
           return
         }
-        const preparedFile = `${folder}/${preparedFilename}`
+        const preparedFile = `${folder}/${parsedFilename}`
         uploadFile(fileFromSync(preparedFile, 'text/plain')).then((res) => {
           const preparedFileData = createReadStream(preparedFile)
           const rl = Readline.createInterface({
@@ -398,10 +406,9 @@ function prepareData(file: any) {
             crlfDelay: Infinity,
           })
           const MAX_LINE = 100
-          let curr = 1
           const list = []
           rl.on('line', (line) => {
-            if (curr > MAX_LINE) {
+            if (list.length >= MAX_LINE) {
               rl.close()
               return
             }
@@ -409,16 +416,18 @@ function prepareData(file: any) {
             try {
               list.push(JSON.parse(line))
             }
-            finally {
-              curr++
-            }
+            catch (err) {}
           })
-          rl.on('close', () => resolve({ message: '', data: { id: res, list }, status: 'Success' }))
+          rl.on('close', () => {
+            resolve({ message: '', data: { id: res, list }, status: 'Success' })
+          })
         })
       })
       return
     }
     resolve({ message: '文件解析失败', data: null, status: 'Fail' })
+  }).finally(() => {
+    rmSync(folder, { recursive: true, force: true })
   })
 }
 

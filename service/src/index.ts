@@ -125,7 +125,7 @@ router.post('/verify', async (req, res) => {
   }
 })
 
-router.post('/prepareData', upload.single('file'), async (req, res) => {
+router.post('/prepare-data', upload.single('file'), async (req, res) => {
   try {
     const response = await prepareData((req as any).file)
     res.send(response)
