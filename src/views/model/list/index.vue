@@ -5,8 +5,8 @@ import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import ModelDetailTable from '../components/ModelDetailTable.vue'
 import { ROUTER } from '@/router/const'
-import { cancelModel as cancelModelApi, deleteModel as deleteModelApi, fetchList } from '@/api'
-import type { CancelModelRes, DeleteModelRes, HyperParam, TrainingFile } from '@/api/types'
+import { cancelModel as cancelModelApi, fetchList } from '@/api'
+import type { CancelModelRes, HyperParam, TrainingFile } from '@/api/types'
 
 interface ListItem {
   created_at: number
@@ -59,40 +59,59 @@ const isTableLoading = ref(false)
 
 const loadModelList = async () => {
   isTableLoading.value = true
-  const { data } = await fetchList<ListItem[]>()
-  isTableLoading.value = false
-  list.value = data.map((item) => {
-    return {
-      id: item.id || '',
-      fine_tuned_model: item.fine_tuned_model || '',
-      model: item.model || '',
-      created_at: dayjs.unix(item.created_at || 0).format('YYYY-MM-DD HH:mm:ss'),
-      status: item.status || '',
-      super_param: JSON.stringify(item.hyperparams),
-    }
-  }) as TableListItem[]
+  try {
+    const { data } = await fetchList<ListItem[]>()
+    isTableLoading.value = false
+    list.value = data.map((item) => {
+      return {
+        id: item.id || '',
+        fine_tuned_model: item.fine_tuned_model || '',
+        model: item.model || '',
+        created_at: dayjs.unix(item.created_at || 0).format('YYYY-MM-DD HH:mm:ss'),
+        status: item.status || '',
+        super_param: JSON.stringify(item.hyperparams),
+      }
+    }) as TableListItem[]
+  }
+  catch (error) {
+    isTableLoading.value = false
+    message.error('加载失败')
+    list.value = []
+  }
 }
 
-const deleteModel = async (detail: TableListItem) => {
-  const { fine_tuned_model } = detail
-  const { data, status } = await deleteModelApi<DeleteModelRes>({ fine_tuned_model })
+// const deleteModel = async (detail: TableListItem) => {
+//   const { fine_tuned_model } = detail
 
-  if (status === 'Fail' || data.error)
-    return message.error(data.error?.message || '删除失败')
+//   try {
+//     const { data } = await deleteModelApi<DeleteModelRes>({ fine_tuned_model })
 
-  message.success('删除成功')
-  loadModelList()
-}
+//     if (data.error)
+//       return message.error(data.error?.message || '删除失败')
+
+//     message.success('删除成功')
+//     loadModelList()
+//   }
+//   catch (error) {
+//     message.error('删除失败')
+//   }
+// }
 
 const calcelModel = async (detail: TableListItem) => {
   const { id } = detail
-  const { status, data } = await cancelModelApi<CancelModelRes>({ id })
 
-  if (status === 'Fail' || data.error)
-    return message.error(data.error?.message || '取消失败')
+  try {
+    const { data } = await cancelModelApi<CancelModelRes>({ id })
 
-  message.success('取消成功')
-  loadModelList()
+    if (data.error)
+      return message.error(data.error?.message || '取消失败')
+
+    message.success('取消成功')
+    loadModelList()
+  }
+  catch (error: any) {
+    message.error(error.message || '取消失败')
+  }
 }
 
 const columns = [
@@ -154,15 +173,6 @@ const columns = [
             onClick: () => calcelModel(row),
           },
           { default: () => '取消' },
-        ), h(
-          NButton,
-          {
-            size: 'small',
-            quaternary: true,
-            type: 'info',
-            onClick: () => deleteModel(row),
-          },
-          { default: () => '删除' },
         ), h(
           NButton,
           {

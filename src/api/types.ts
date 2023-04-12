@@ -21,7 +21,7 @@ export interface CreateModelReq {
   model: string
   suffix: string
   validation_file: string
-  n_epochs: number
+  n_epochs: number | null
   batch_size: null | number
   learning_rate_multiplier: null | number
   prompt_loss_weight: null | number

@@ -3,11 +3,15 @@ import { ref } from 'vue'
 import type { FormItemRule, FormRules, UploadCustomRequestOptions, UploadFileInfo } from 'naive-ui'
 import {
   NButton,
+  NCollapse,
+  NCollapseItem,
   NForm,
   NFormItem,
+  NIcon,
   NInput,
   NInputNumber,
   NModal,
+  NPopover,
   NSelect,
   NSpace,
   NSpin,
@@ -18,15 +22,20 @@ import { useRouter } from 'vue-router'
 import { createModel as createModelApi, prepareData } from '@/api/index'
 import type { CancelModelRes } from '@/api/types'
 
+const n_epochs_tip = '默认为 4。训练模型的时期数。一个纪元指的是训练数据集的一个完整周期。'
+const batch_size_tip = '默认为训练集中示例数量的 0.2%，上限为 256。批量大小是用于训练单个正向和反向传递的训练示例数。总的来说，我们发现更大的批次大小往往更适用于更大的数据集。'
+const learning_rate_multiplier_tip = '默认为 0.05、0.1 或 0.2，具体取决于 final batch_size。微调学习率是用于预训练的原始学习率乘以该乘数。我们建议使用 0.02 到 0.2 范围内的值进行试验，以查看产生最佳结果的值。根据经验，我们发现较大的学习率通常在较大的批量大小下表现更好。'
+const compute_classification_metrics_tip = '默认为False。如果为 True，为了对分类任务进行微调，在每个 epoch 结束时在验证集上计算特定于分类的指标（准确性、F-1 分数等）。'
+
 const router = useRouter()
 const message = useMessage()
 
 const formData = ref({
   suffix: '',
   model: 'ada',
-  n_epochs: 4,
-  batch_size: 4,
-  learning_rate_multiplier: 0.1,
+  n_epochs: null,
+  batch_size: null,
+  learning_rate_multiplier: null,
   compute_classification_metrics: 0,
   training_file: null,
 })
@@ -49,39 +58,6 @@ const rules: FormRules = {
       validator(rule: FormItemRule, value: string) {
         if (!value)
           return new Error('请选择基础模型')
-        return true
-      },
-      trigger: ['input', 'blur'],
-    },
-  ],
-  n_epochs: [
-    {
-      required: true,
-      validator(rule: FormItemRule, value: string) {
-        if (!value)
-          formData.value.n_epochs = 4
-        return true
-      },
-      trigger: ['input', 'blur'],
-    },
-  ],
-  batch_size: [
-    {
-      required: true,
-      validator(rule: FormItemRule, value: string) {
-        if (!value)
-          formData.value.batch_size = 4
-        return true
-      },
-      trigger: ['input', 'blur'],
-    },
-  ],
-  learning_rate_multiplier: [
-    {
-      required: true,
-      validator(rule: FormItemRule, value: string) {
-        if (!value)
-          formData.value.learning_rate_multiplier = 0.1
         return true
       },
       trigger: ['input', 'blur'],
@@ -138,7 +114,10 @@ const customRequest = ({
       afterPreparedData.value = list
       onFinish()
     })
-    .catch(() => {
+    .catch((err) => {
+      message.error(err.message, {
+        keepAliveOnHover: true,
+      })
       onError()
     })
 }
@@ -174,27 +153,32 @@ const createModel = async () => {
   }
 
   isLoading.value = true
-  const { status, data } = await createModelApi<CancelModelRes>({
-    model: formData.value.model,
-    suffix: formData.value.suffix,
-    training_file: afterPreparedFileId.value,
-    validation_file: '',
-    n_epochs: formData.value.n_epochs,
-    batch_size: formData.value.batch_size,
-    learning_rate_multiplier: formData.value.learning_rate_multiplier,
-    prompt_loss_weight: 0.01,
-    compute_classification_metrics: !!formData.value.compute_classification_metrics,
-    classification_n_classes: null,
-    classification_positive_class: null,
-    classification_betas: null,
-  })
-  isLoading.value = false
+  try {
+    await createModelApi<CancelModelRes>({
+      model: formData.value.model,
+      suffix: formData.value.suffix,
+      training_file: afterPreparedFileId.value,
+      validation_file: '',
+      n_epochs: formData.value.n_epochs,
+      batch_size: formData.value.batch_size,
+      learning_rate_multiplier: formData.value.learning_rate_multiplier,
+      prompt_loss_weight: 0.01,
+      compute_classification_metrics: !!formData.value.compute_classification_metrics,
+      classification_n_classes: null,
+      classification_positive_class: null,
+      classification_betas: null,
+    })
+    isLoading.value = false
 
-  if (status !== 'Success' || data.error)
-    return message.error(data.error?.message || '创建失败')
-
-  message.success('创建成功')
-  cancel()
+    message.success('创建成功')
+    cancel()
+  }
+  catch (error: any) {
+    isLoading.value = false
+    message.error(error?.message || '创建失败！', {
+      keepAliveOnHover: true,
+    })
+  }
 }
 </script>
 
@@ -203,11 +187,11 @@ const createModel = async () => {
     <div class="model-create__header">
       微调创建
     </div>
-    <NSpin :show="isLoading" class="model-create__content w-full h-full">
+    <NSpin :show="isLoading" class="model-create__content w-full">
       <div class="model-create__content-main">
         <NForm ref="formRef" :model="formData" :rules="rules">
           <NFormItem path="suffix" label="模型名称">
-            <NInput v-model:value="formData.suffix" @keydown.enter.prevent />
+            <NInput v-model:value="formData.suffix" size="small" @keydown.enter.prevent />
           </NFormItem>
           <NFormItem
             label="基础模型"
@@ -216,21 +200,7 @@ const createModel = async () => {
             <NSelect
               v-model:value="formData.model"
               :options="modelOptions"
-            />
-          </NFormItem>
-          <NFormItem path="n_epochs" label="训练模型的时期数--n_epochs">
-            <NInputNumber v-model:value="formData.n_epochs" :min="0" :precision="0" />
-          </NFormItem>
-          <NFormItem path="batch_size" label="批量大小--batch_size">
-            <NInputNumber v-model:value="formData.batch_size" :min="0" :precision="0" />
-          </NFormItem>
-          <NFormItem path="learning_rate_multiplier" label="微调学习率--learning_rate_multiplier">
-            <NInputNumber v-model:value="formData.learning_rate_multiplier" :min="0" :precision="2" />
-          </NFormItem>
-          <NFormItem path="compute_classification_metrics" label="compute_classification_metrics">
-            <NSelect
-              v-model:value="formData.compute_classification_metrics"
-              :options="computeClassificationMetricsOptions"
+              size="small"
             />
           </NFormItem>
           <NFormItem
@@ -248,11 +218,75 @@ const createModel = async () => {
           </NFormItem>
           <div
             v-if="fileList.length && fileList[0].status === 'finished'"
-            class="text-[#3366ff] hover:cursor-pointer"
+            class="text-[#3366ff] hover:cursor-pointer mb-4"
             @click="viewData"
           >
             数据预览
           </div>
+          <NCollapse>
+            <NCollapseItem title="高级设置" name="1">
+              <NFormItem path="n_epochs">
+                <NInputNumber v-model:value="formData.n_epochs" :min="0" :precision="0" size="small" />
+                <template #label>
+                  <span>训练模型的时期数--n_epochs</span>
+                  <NPopover trigger="hover" style="width: 500px">
+                    <template #trigger>
+                      <NIcon size="12" class="ml-4">
+                        <svg t="1681266249014" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2280" width="200" height="200"><path d="M512 960A448 448 0 1 0 512 64a448 448 0 0 0 0 896z m0-64A384 384 0 1 1 512 128a384 384 0 0 1 0 768z m19.2-576a12.8 12.8 0 0 0 12.8-12.48V268.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V307.2a12.8 12.8 0 0 0 12.48 12.8H531.2z m0 448a12.8 12.8 0 0 0 12.8-12.48V396.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V755.2a12.8 12.8 0 0 0 12.48 12.8H531.2z" fill="#458FFF" p-id="2281" /></svg>
+                      </NIcon>
+                    </template>
+                    <span>{{ n_epochs_tip }}</span>
+                  </NPopover>
+                </template>
+              </NFormItem>
+              <NFormItem path="batch_size">
+                <NInputNumber v-model:value="formData.batch_size" :min="0" :precision="0" size="small" />
+                <template #label>
+                  <span>批量大小--batch_size</span>
+                  <NPopover trigger="hover" style="width: 500px">
+                    <template #trigger>
+                      <NIcon size="12" class="ml-4">
+                        <svg t="1681266249014" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2280" width="200" height="200"><path d="M512 960A448 448 0 1 0 512 64a448 448 0 0 0 0 896z m0-64A384 384 0 1 1 512 128a384 384 0 0 1 0 768z m19.2-576a12.8 12.8 0 0 0 12.8-12.48V268.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V307.2a12.8 12.8 0 0 0 12.48 12.8H531.2z m0 448a12.8 12.8 0 0 0 12.8-12.48V396.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V755.2a12.8 12.8 0 0 0 12.48 12.8H531.2z" fill="#458FFF" p-id="2281" /></svg>
+                      </NIcon>
+                    </template>
+                    <span>{{ batch_size_tip }}</span>
+                  </NPopover>
+                </template>
+              </NFormItem>
+              <NFormItem path="learning_rate_multiplier">
+                <NInputNumber v-model:value="formData.learning_rate_multiplier" :min="0.02" :max="0.2" size="small" />
+                <template #label>
+                  <span>微调学习率--learning_rate_multiplier</span>
+                  <NPopover trigger="hover" style="width: 500px">
+                    <template #trigger>
+                      <NIcon size="12" class="ml-4">
+                        <svg t="1681266249014" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2280" width="200" height="200"><path d="M512 960A448 448 0 1 0 512 64a448 448 0 0 0 0 896z m0-64A384 384 0 1 1 512 128a384 384 0 0 1 0 768z m19.2-576a12.8 12.8 0 0 0 12.8-12.48V268.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V307.2a12.8 12.8 0 0 0 12.48 12.8H531.2z m0 448a12.8 12.8 0 0 0 12.8-12.48V396.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V755.2a12.8 12.8 0 0 0 12.48 12.8H531.2z" fill="#458FFF" p-id="2281" /></svg>
+                      </NIcon>
+                    </template>
+                    <span>{{ learning_rate_multiplier_tip }}</span>
+                  </NPopover>
+                </template>
+              </NFormItem>
+              <NFormItem path="compute_classification_metrics">
+                <NSelect
+                  v-model:value="formData.compute_classification_metrics"
+                  size="small"
+                  :options="computeClassificationMetricsOptions"
+                />
+                <template #label>
+                  <span>计算分类指标--compute_classification_metrics</span>
+                  <NPopover trigger="hover" style="width: 500px">
+                    <template #trigger>
+                      <NIcon size="12" class="ml-4">
+                        <svg t="1681266249014" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2280" width="200" height="200"><path d="M512 960A448 448 0 1 0 512 64a448 448 0 0 0 0 896z m0-64A384 384 0 1 1 512 128a384 384 0 0 1 0 768z m19.2-576a12.8 12.8 0 0 0 12.8-12.48V268.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V307.2a12.8 12.8 0 0 0 12.48 12.8H531.2z m0 448a12.8 12.8 0 0 0 12.8-12.48V396.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V755.2a12.8 12.8 0 0 0 12.48 12.8H531.2z" fill="#458FFF" p-id="2281" /></svg>
+                      </NIcon>
+                    </template>
+                    <span>{{ compute_classification_metrics_tip }}</span>
+                  </NPopover>
+                </template>
+              </NFormItem>
+            </NCollapseItem>
+          </NCollapse>
         </NForm>
       </div>
     </NSpin>
@@ -299,8 +333,10 @@ const createModel = async () => {
   &__content {
     flex: 1;
     display: flex;
-    align-items: center;
     justify-content: center;
+    height: calc(100% - 128px);
+    overflow-y: auto;
+    padding-top: 50px;
 
     &-main {
       width: 800px;
