@@ -307,17 +307,22 @@ interface CreateModelRes {
 }
 
 function createModel(req: any) {
+  const highSetting = ['n_epochs', 'batch_size', 'learning_rate_multiplier', 'compute_classification_metrics']
+  let execStr = `openai api fine_tunes.create -t ${req.body.training_file} -m ${req.body.model} --suffix ${req.body.suffix}`
+
+  highSetting.forEach((item) => {
+    if (req.body[item]) {
+      if (item === 'compute_classification_metrics')
+        execStr += ` --${item}`
+
+      else
+        execStr += ` --${item} ${req.body[item]}`
+    }
+  })
   return new Promise<CreateModelRes>((resolve, reject) => {
-    exec(`openai api fine_tunes.create \
-    -t ${req.body.training_file} \
-    -m ${req.body.model} \
-    --suffix ${req.body.suffix} \
-    --n_epochs ${req.body.n_epochs} \
-    --batch_size ${req.body.batch_size} \
-    --learning_rate_multiplier ${req.body.learning_rate_multiplier} \
-    --compute_classification_metrics ${req.body.compute_classification_metrics}`, (_err) => {
+    exec(execStr, (_err) => {
       if (_err)
-        return reject(new Error('创建失败！'))
+        return reject(new Error(_err.message))
 
       return resolve({ message: '创建成功', data: {}, status: 'Success' })
     })
@@ -441,7 +446,7 @@ function prepareData(file: any) {
     if (existsSync(file.path)) {
       exec(`cd ${folder} &&  openai tools fine_tunes.prepare_data -f ${filename} -q`, (_err) => {
         if (_err) {
-          reject(new Error('微调接口调用失败失败'))
+          reject(new Error(_err.message))
           return
         }
         const parsedFilename = findFile(folder, filename)
