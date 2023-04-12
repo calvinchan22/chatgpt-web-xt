@@ -94,7 +94,9 @@ onMounted(async () => {
 
 <template>
   <div class="right-sider">
-    <div>模型：</div>
+    <div class="dark:text-[#fff]">
+      模型：
+    </div>
     <NSelect
       v-model:value="selectedModel"
       filterable
@@ -102,7 +104,7 @@ onMounted(async () => {
       :disabled="hasChat"
       :options="modelOptions"
     />
-    <div class="mt-8">
+    <div class="mt-8 dark:text-[#fff]">
       Stop Sequence：
     </div>
     <NSelect
