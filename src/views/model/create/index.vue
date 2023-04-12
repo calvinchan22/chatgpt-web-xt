@@ -183,12 +183,12 @@ const createModel = async () => {
 </script>
 
 <template>
-  <div class="model-create w-full h-full">
-    <div class="model-create__header">
+  <div class="model-create w-full h-full dark:bg-[#24272e]">
+    <div class="model-create__header dark:bg-[#24272e] dark:text-[#fff]">
       微调创建
     </div>
     <NSpin :show="isLoading" class="model-create__content w-full">
-      <div class="model-create__content-main">
+      <div class="model-create__content-main dark:bg-[#24272e]">
         <NForm ref="formRef" :model="formData" :rules="rules">
           <NFormItem path="suffix" label="模型名称">
             <NInput v-model:value="formData.suffix" size="small" @keydown.enter.prevent />
@@ -290,9 +290,9 @@ const createModel = async () => {
         </NForm>
       </div>
     </NSpin>
-    <div class="model-create__footer">
+    <div class="model-create__footer dark:bg-[#24272e]">
       <NSpace>
-        <NButton type="info" :disabled="isLoading" @click="createModel">
+        <NButton type="primary" ghost :disabled="isLoading" @click="createModel">
           创建
         </NButton>
         <NButton @click="cancel">
