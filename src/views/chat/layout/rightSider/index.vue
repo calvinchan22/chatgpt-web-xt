@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { SelectGroupOption, SelectOption } from 'naive-ui'
-import { NSelect } from 'naive-ui'
-import { computed, onMounted, ref, watch } from 'vue'
+import { NSelect, NTooltip } from 'naive-ui'
+import type { VNode } from 'vue'
+import { computed, h, onMounted, ref, watch } from 'vue'
 import { fetchModels } from '@/api'
 import { useAuthStore, useChatStore } from '@/store'
 
@@ -16,6 +17,11 @@ interface ModelItem {
 
 const defaultModel = 'gpt-3.5-turbo'
 const modelOptions = ref<Array<SelectGroupOption | SelectOption>>([])
+const modelRenderOption = ({ node, option }: { node: VNode; option: SelectOption }) =>
+  h(NTooltip, null, {
+    trigger: () => node,
+    default: () => `${option.label}`,
+  })
 const selectedModel = ref('')
 const stopSequenceList = ref<string[]>([])
 
@@ -95,14 +101,15 @@ onMounted(async () => {
 <template>
   <div class="right-sider">
     <div class="dark:text-[#fff]">
-      模型：
+      {{ $t('fineTunes.model') }}:
     </div>
     <NSelect
       v-model:value="selectedModel"
       filterable
-      placeholder="选择模型"
+      :placeholder="$t('fineTunes.selectModel')"
       :disabled="hasChat"
       :options="modelOptions"
+      :render-option="modelRenderOption"
     />
     <div class="mt-8 dark:text-[#fff]">
       Stop Sequence：
@@ -112,10 +119,10 @@ onMounted(async () => {
       filterable
       multiple
       tag
-      placeholder="请输入并选中"
+      :placeholder="$t('fineTunes.stopSequenceSelectPlaceholder')"
     >
       <template #empty>
-        <span>请输入并选中</span>
+        <span>{{ $t('fineTunes.stopSequenceSelectPlaceholder') }}</span>
       </template>
     </NSelect>
   </div>

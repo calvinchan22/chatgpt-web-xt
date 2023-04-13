@@ -7,6 +7,7 @@ import ModelDetailTable from '../components/ModelDetailTable.vue'
 import { ROUTER } from '@/router/const'
 import { cancelModel as cancelModelApi, fetchList } from '@/api'
 import type { CancelModelRes, HyperParam, TrainingFile } from '@/api/types'
+import { t } from '@/locales'
 
 interface ListItem {
   created_at: number
@@ -73,9 +74,9 @@ const loadModelList = async () => {
       }
     }) as TableListItem[]
   }
-  catch (error) {
+  catch (error: any) {
     isTableLoading.value = false
-    message.error('加载失败')
+    message.error(error?.message)
     list.value = []
   }
 }
@@ -104,61 +105,61 @@ const calcelModel = async (detail: TableListItem) => {
     const { data } = await cancelModelApi<CancelModelRes>({ id })
 
     if (data.error)
-      return message.error(data.error?.message || '取消失败')
+      return message.error(data.error?.message)
 
-    message.success('取消成功')
+    message.success(t('common.cancelSuccess'))
     loadModelList()
   }
   catch (error: any) {
-    message.error(error.message || '取消失败')
+    message.error(error.message)
   }
 }
 
 const columns = [
   {
-    title: '模型名称',
+    title: t('fineTunes.suffix'),
     key: 'fine_tuned_model',
     ellipsis: {
       tooltip: true,
     },
   },
   {
-    title: '模型ID',
+    title: 'id',
     key: 'id',
     ellipsis: {
       tooltip: true,
     },
   },
   {
-    title: '基础模型',
+    title: t('fineTunes.baseModel'),
     key: 'model',
     ellipsis: {
       tooltip: true,
     },
   },
   {
-    title: '创建时间',
+    title: t('common.createTime'),
     key: 'created_at',
     ellipsis: {
       tooltip: true,
     },
   },
   {
-    title: '状态',
+    title: t('fineTunes.status'),
     key: 'status',
     ellipsis: {
       tooltip: true,
     },
   },
   {
-    title: '超参数',
+    title: t('fineTunes.hyperParameters'),
     key: 'super_param',
     ellipsis: {
       tooltip: true,
     },
   },
   {
-    title: '操作',
+    title: t('common.action'),
     key: 'actions',
     render(row: TableListItem) {
       return h(
@@ -172,7 +173,7 @@ const columns = [
             type: 'info',
             onClick: () => calcelModel(row),
           },
-          { default: () => '取消' },
+          { default: () => t('common.cancel') },
         ), h(
           NButton,
           {
@@ -181,7 +182,7 @@ const columns = [
             type: 'info',
             onClick: () => seeDetail(row),
           },
-          { default: () => '查看详情' },
+          { default: () => t('common.viewDetails') },
         )],
       )
     },
@@ -198,11 +199,11 @@ onMounted(() => {
     <div class="model-list__header dark:bg-[#24272e]">
       <div>
         <NButton @click="goBack">
-          chat
+          {{ $t('common.chat') }}
         </NButton>
       </div>
       <NButton type="primary" ghost @click="toCreate">
-        创建
+        {{ $t('common.create') }}
       </NButton>
     </div>
     <div class="model-list__content">
@@ -226,7 +227,7 @@ onMounted(() => {
       v-model:show="showModal"
       class="custom-card"
       preset="card"
-      title="详情"
+      :title="$t('common.detail')"
       :style="{ width: '800px' }"
       size="huge"
       :bordered="false"
@@ -240,14 +241,12 @@ onMounted(() => {
 .model-list {
     display: flex;
     flex-direction: column;
-    background-color: #fbfbfb;
     &__header {
         box-shadow: inset 0 -1px #e1e5eb;
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 20px 24px 16px 40px;
-        background-color: #fff;
     }
 
     &__content {
