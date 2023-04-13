@@ -21,11 +21,7 @@ import {
 import { useRouter } from 'vue-router'
 import { createModel as createModelApi, prepareData } from '@/api/index'
 import type { CancelModelRes } from '@/api/types'
-
-const n_epochs_tip = '默认为 4。训练模型的时期数。一个纪元指的是训练数据集的一个完整周期。'
-const batch_size_tip = '默认为训练集中示例数量的 0.2%，上限为 256。批量大小是用于训练单个正向和反向传递的训练示例数。总的来说，我们发现更大的批次大小往往更适用于更大的数据集。'
-const learning_rate_multiplier_tip = '默认为 0.05、0.1 或 0.2，具体取决于 final batch_size。微调学习率是用于预训练的原始学习率乘以该乘数。我们建议使用 0.02 到 0.2 范围内的值进行试验，以查看产生最佳结果的值。根据经验，我们发现较大的学习率通常在较大的批量大小下表现更好。'
-const compute_classification_metrics_tip = '默认为False。如果为 True，为了对分类任务进行微调，在每个 epoch 结束时在验证集上计算特定于分类的指标（准确性、F-1 分数等）。'
+import { t } from '@/locales'
 
 const router = useRouter()
 const message = useMessage()
@@ -46,7 +42,7 @@ const rules: FormRules = {
       required: true,
       validator(rule: FormItemRule, value: string) {
         if (!value)
-          return new Error('请填写模型名称')
+          return new Error(t('fineTunes.suffixValidationTips'))
         return true
       },
       trigger: ['input', 'blur'],
@@ -57,7 +53,7 @@ const rules: FormRules = {
       required: true,
       validator(rule: FormItemRule, value: string) {
         if (!value)
-          return new Error('请选择基础模型')
+          return new Error(t('fineTunes.modelValidationTips'))
         return true
       },
       trigger: ['input', 'blur'],
@@ -86,10 +82,10 @@ const modelOptions = [{
 
 const computeClassificationMetricsOptions = [
   {
-    label: '是',
+    label: t('common.yes'),
     value: 1,
   }, {
-    label: '否',
+    label: t('common.no'),
     value: 0,
   },
 ]
@@ -136,19 +132,19 @@ const isLoading = ref(false)
 const createModel = async () => {
   if (!formData.value.suffix.length) {
     return message.error(
-      '请填写模型名称',
+      t('fineTunes.suffixValidationTips'),
     )
   }
 
   if (!formData.value.model.length) {
     return message.error(
-      '请选择基础模型',
+      t('fineTunes.modelValidationTips'),
     )
   }
 
   if (!fileList.value.length || fileList.value[0].status !== 'finished') {
     return message.error(
-      '请检查上传文件',
+      t('fineTunes.dataFileValidationTips'),
     )
   }
 
@@ -170,12 +166,12 @@ const createModel = async () => {
     })
     isLoading.value = false
 
-    message.success('创建成功')
+    message.success(t('common.createSuccess'))
     cancel()
   }
   catch (error: any) {
     isLoading.value = false
-    message.error(error?.message || '创建失败！', {
+    message.error(error?.message, {
       keepAliveOnHover: true,
     })
   }
@@ -185,16 +181,16 @@ const createModel = async () => {
 <template>
   <div class="model-create w-full h-full dark:bg-[#24272e]">
     <div class="model-create__header dark:bg-[#24272e] dark:text-[#fff]">
-      微调创建
+      {{ $t('fineTunes.fineTunesCreate') }}
     </div>
     <NSpin :show="isLoading" class="model-create__content w-full">
       <div class="model-create__content-main dark:bg-[#24272e]">
         <NForm ref="formRef" :model="formData" :rules="rules">
-          <NFormItem path="suffix" label="模型名称">
+          <NFormItem path="suffix" :label="$t('fineTunes.suffix')">
             <NInput v-model:value="formData.suffix" size="small" @keydown.enter.prevent />
           </NFormItem>
           <NFormItem
-            label="基础模型"
+            :label="$t('fineTunes.baseModel')"
             path="model"
           >
             <NSelect
@@ -204,7 +200,7 @@ const createModel = async () => {
             />
           </NFormItem>
           <NFormItem
-            label="数据文件"
+            :label="$t('fineTunes.dataFile')"
             path="training_file"
           >
             <NUpload
@@ -213,7 +209,7 @@ const createModel = async () => {
               :max="1"
               accept=".csv, .tsv, .xlsx, .json, .jsonl"
             >
-              <NButton>上传文件</NButton>
+              <NButton>{{ $t('common.uploadFile') }}</NButton>
             </NUpload>
           </NFormItem>
           <div
@@ -221,49 +217,49 @@ const createModel = async () => {
             class="text-[#3366ff] hover:cursor-pointer mb-4"
             @click="viewData"
           >
-            数据预览
+            {{ $t('fineTunes.dataPreview') }}
           </div>
           <NCollapse>
-            <NCollapseItem title="高级设置" name="1">
+            <NCollapseItem :title="$t('fineTunes.advancedSetting')" name="1">
               <NFormItem path="n_epochs">
                 <NInputNumber v-model:value="formData.n_epochs" :min="0" :precision="0" size="small" />
                 <template #label>
-                  <span>训练模型的时期数--n_epochs</span>
+                  <span>{{ $t('fineTunes.n_epochs') }}</span>
                   <NPopover trigger="hover" style="width: 500px">
                     <template #trigger>
                       <NIcon size="12" class="ml-4">
                         <svg t="1681266249014" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2280" width="200" height="200"><path d="M512 960A448 448 0 1 0 512 64a448 448 0 0 0 0 896z m0-64A384 384 0 1 1 512 128a384 384 0 0 1 0 768z m19.2-576a12.8 12.8 0 0 0 12.8-12.48V268.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V307.2a12.8 12.8 0 0 0 12.48 12.8H531.2z m0 448a12.8 12.8 0 0 0 12.8-12.48V396.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V755.2a12.8 12.8 0 0 0 12.48 12.8H531.2z" fill="#458FFF" p-id="2281" /></svg>
                       </NIcon>
                     </template>
-                    <span>{{ n_epochs_tip }}</span>
+                    <span>{{ $t('fineTunes.n_epochs_tip') }}</span>
                   </NPopover>
                 </template>
               </NFormItem>
               <NFormItem path="batch_size">
                 <NInputNumber v-model:value="formData.batch_size" :min="0" :precision="0" size="small" />
                 <template #label>
-                  <span>批量大小--batch_size</span>
+                  <span>{{ $t('fineTunes.batch_size') }}</span>
                   <NPopover trigger="hover" style="width: 500px">
                     <template #trigger>
                       <NIcon size="12" class="ml-4">
                         <svg t="1681266249014" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2280" width="200" height="200"><path d="M512 960A448 448 0 1 0 512 64a448 448 0 0 0 0 896z m0-64A384 384 0 1 1 512 128a384 384 0 0 1 0 768z m19.2-576a12.8 12.8 0 0 0 12.8-12.48V268.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V307.2a12.8 12.8 0 0 0 12.48 12.8H531.2z m0 448a12.8 12.8 0 0 0 12.8-12.48V396.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V755.2a12.8 12.8 0 0 0 12.48 12.8H531.2z" fill="#458FFF" p-id="2281" /></svg>
                       </NIcon>
                     </template>
-                    <span>{{ batch_size_tip }}</span>
+                    <span>{{ $t('fineTunes.batch_size_tip') }}</span>
                   </NPopover>
                 </template>
               </NFormItem>
               <NFormItem path="learning_rate_multiplier">
                 <NInputNumber v-model:value="formData.learning_rate_multiplier" :min="0.02" :max="0.2" size="small" />
                 <template #label>
-                  <span>微调学习率--learning_rate_multiplier</span>
+                  <span>{{ $t('fineTunes.learning_rate_multiplier') }}</span>
                   <NPopover trigger="hover" style="width: 500px">
                     <template #trigger>
                       <NIcon size="12" class="ml-4">
                         <svg t="1681266249014" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2280" width="200" height="200"><path d="M512 960A448 448 0 1 0 512 64a448 448 0 0 0 0 896z m0-64A384 384 0 1 1 512 128a384 384 0 0 1 0 768z m19.2-576a12.8 12.8 0 0 0 12.8-12.48V268.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V307.2a12.8 12.8 0 0 0 12.48 12.8H531.2z m0 448a12.8 12.8 0 0 0 12.8-12.48V396.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V755.2a12.8 12.8 0 0 0 12.48 12.8H531.2z" fill="#458FFF" p-id="2281" /></svg>
                       </NIcon>
                     </template>
-                    <span>{{ learning_rate_multiplier_tip }}</span>
+                    <span>{{ $t('fineTunes.learning_rate_multiplier_tip') }}</span>
                   </NPopover>
                 </template>
               </NFormItem>
@@ -274,14 +270,14 @@ const createModel = async () => {
                   :options="computeClassificationMetricsOptions"
                 />
                 <template #label>
-                  <span>计算分类指标--compute_classification_metrics</span>
+                  <span>{{ $t('fineTunes.compute_classification_metrics') }}</span>
                   <NPopover trigger="hover" style="width: 500px">
                     <template #trigger>
                       <NIcon size="12" class="ml-4">
                         <svg t="1681266249014" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2280" width="200" height="200"><path d="M512 960A448 448 0 1 0 512 64a448 448 0 0 0 0 896z m0-64A384 384 0 1 1 512 128a384 384 0 0 1 0 768z m19.2-576a12.8 12.8 0 0 0 12.8-12.48V268.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V307.2a12.8 12.8 0 0 0 12.48 12.8H531.2z m0 448a12.8 12.8 0 0 0 12.8-12.48V396.8a12.8 12.8 0 0 0-12.48-12.8H492.8a12.8 12.8 0 0 0-12.8 12.48V755.2a12.8 12.8 0 0 0 12.48 12.8H531.2z" fill="#458FFF" p-id="2281" /></svg>
                       </NIcon>
                     </template>
-                    <span>{{ compute_classification_metrics_tip }}</span>
+                    <span>{{ $t('fineTunes.compute_classification_metrics_tip') }}</span>
                   </NPopover>
                 </template>
               </NFormItem>
@@ -293,17 +289,17 @@ const createModel = async () => {
     <div class="model-create__footer dark:bg-[#24272e]">
       <NSpace>
         <NButton type="primary" ghost :disabled="isLoading" @click="createModel">
-          创建
+          {{ $t('common.create') }}
         </NButton>
         <NButton @click="cancel">
-          取消
+          {{ $t('common.cancel') }}
         </NButton>
       </NSpace>
     </div>
     <NModal
       v-model:show="showPreparedDataModal"
       preset="card"
-      title="数据预览"
+      :title="$t('fineTunes.dataPreview')"
       :style="{ width: '800px' }"
       size="huge"
       :bordered="false"
@@ -319,7 +315,6 @@ const createModel = async () => {
 .model-create {
   display: flex;
   flex-direction: column;
-  background-color: #fbfbfb;
 
   &__header {
     height: 48px;
@@ -327,7 +322,6 @@ const createModel = async () => {
     box-shadow: inset 0 -1px #e1e5eb;
     padding: 0 16px;
     line-height: 48px;
-    background-color: #fff;
   }
 
   &__content {
@@ -343,7 +337,7 @@ const createModel = async () => {
       padding: 24px;
       border: 1px solid #e1e5eb;
       border-radius: 6px;
-      background-color: #fff;
+
     }
   }
   &__footer {
@@ -352,7 +346,6 @@ const createModel = async () => {
       align-items: center;
       justify-content: center;
       box-shadow: inset 0 1px #e1e5eb;
-      background-color: #fff;
   }
 }
 </style>

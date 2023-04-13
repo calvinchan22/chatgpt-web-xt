@@ -16,7 +16,7 @@ const jumpToModel = () => {
   <div class="global-header">
     <NSpace>
       <NButton @click="jumpToModel">
-        微调
+        {{ $t('fineTunes.fineTunes') }}
       </NButton>
     </NSpace>
   </div>

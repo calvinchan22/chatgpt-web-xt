@@ -4,8 +4,6 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import { setupPageGuard } from './permission'
 import { ROUTER } from './const'
 import { ChatLayout } from '@/views/chat/layout'
-import Model from '@/views/model/list/index.vue'
-import CreateModel from '@/views/model/create/index.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -24,12 +22,12 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/model',
     name: ROUTER.name.model,
-    component: Model,
+    component: () => import('@/views/model/list/index.vue'),
   },
   {
     path: '/model/create',
     name: ROUTER.name.modelCreate,
-    component: CreateModel,
+    component: () => import('@/views/model/create/index.vue'),
   },
   {
     path: '/404',
